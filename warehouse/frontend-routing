@@ -1,0 +1,44 @@
+# Implementation Plan - Frontend Routing Setup with React Router DOM
+
+This plan outlines the steps to install `react-router-dom` in the React frontend, configure routes in `App.jsx` for all pages, and wire up the state-based layout navigation to utilize React Router paths.
+
+## Proposed Changes
+
+### Component: Frontend dependencies
+
+We need to install `react-router-dom` in the `frontend/` directory.
+
+#### [MODIFY] [package.json](file:///c:/Users/Admin/Videos/warehouse/frontend/package.json)
+- Add `"react-router-dom": "^6.22.0"` (or compatible v6 version) to the `dependencies` object.
+- Execute `npm install` to download the package.
+
+---
+
+### Component: Frontend routing layout
+
+We will update `App.jsx` to establish routes using `react-router-dom`. We'll implement a `LayoutWrapper` that integrates location changes with the existing `Layout` and `Sidebar` state.
+
+#### [MODIFY] [App.jsx](file:///c:/Users/Admin/Videos/warehouse/frontend/src/App.jsx)
+- Import `BrowserRouter`, `Routes`, `Route`, `Navigate`, `Outlet`, `useLocation`, and `useNavigate` from `react-router-dom`.
+- Import page components: `Login`, `Dashboard`, `Products`, `Categories`, `Suppliers`, `Warehouses`, `Inventory`, `StockIn`, `StockOut`, `StockTransfer`, `Reports`, and a placeholder or new `Users` management page.
+- Wrap all protected paths in a `ProtectedRoute` component that verifies authentication (token and user session) using `useAuth()`.
+- Wrap all main application pages in a `LayoutWrapper` that automatically maps URL paths to the matching page names and IDs.
+- Handle redirects from `/` to `/dashboard`.
+- Render the `AuthProvider` and `ThemeProvider` at the top level.
+
+#### [NEW] [Users.jsx](file:///c:/Users/Admin/Videos/warehouse/frontend/src/pages/Users.jsx)
+- Since the admin role menu has a "User Management" option and the backend router supports it, we'll create a premium, clean `Users.jsx` CRUD manager.
+- Features: View list of users, create new users, update user info/roles, and deactivate/delete users (including checks for deleting the default admin or oneself).
+
+---
+
+## Verification Plan
+
+### Automated & Manual Verification
+1. **Dependency Verification:** Ensure `react-router-dom` is successfully installed and that running `npm run dev` starts the frontend without errors.
+2. **Navigation Flow:** Click sidebar buttons and verify that the URL path changes correctly (e.g. `/products`, `/warehouses`), the page title updates, and the highlighted sidebar item matches the path.
+3. **Route Guards:**
+   - Access `/dashboard` while unauthenticated; it should redirect to `/login`.
+   - Access `/login` while logged in; it should redirect to `/dashboard`.
+   - Access `/users` as a manager or staff user; it should redirect back to `/dashboard` (admin-only route guard).
+4. **User Management:** Access `/users` as an admin, create a test user, update their role, and ensure the operations succeed against the FastAPI backend.
