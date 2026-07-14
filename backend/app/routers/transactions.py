@@ -1,6 +1,6 @@
 import datetime
 import random
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
 from typing import List, Optional
@@ -9,6 +9,7 @@ from decimal import Decimal
 from ..database import get_db
 from .. import models, schemas, auth
 from .inventory import check_and_trigger_notifications
+from ..audit_helper import log_action
 
 router = APIRouter(prefix="/transactions", tags=["Transactions"])
 
@@ -21,6 +22,7 @@ def generate_tx_no(prefix: str) -> str:
 @router.post("/stock-in", response_model=schemas.StockInOut, status_code=status.HTTP_201_CREATED)
 def create_stock_in(
     payload: schemas.StockInCreate,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.require_staff_or_above)
 ):
@@ -122,6 +124,16 @@ def create_stock_in(
         
         # Trigger low stock / alert updates
         check_and_trigger_notifications(db_item.product_id, db)
+
+    log_action(
+        db,
+        user=current_user,
+        action="stock_in",
+        resource="transactions",
+        resource_id=str(db_stock_in.id),
+        details=f"Stock In transaction '{db_stock_in.transaction_no}' from supplier ID {db_stock_in.supplier_id}. Total: {db_stock_in.total_amount}. {len(db_items)} item(s).",
+        request=request
+    )
         
     return get_stock_in_by_id(db_stock_in.id, db)
 
@@ -129,6 +141,7 @@ def create_stock_in(
 @router.post("/stock-out", response_model=schemas.StockOutOut, status_code=status.HTTP_201_CREATED)
 def create_stock_out(
     payload: schemas.StockOutCreate,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.require_staff_or_above)
 ):
@@ -208,6 +221,16 @@ def create_stock_out(
         
         # Trigger notification checks
         check_and_trigger_notifications(db_item.product_id, db)
+
+    log_action(
+        db,
+        user=current_user,
+        action="stock_out",
+        resource="transactions",
+        resource_id=str(db_stock_out.id),
+        details=f"Stock Out transaction '{db_stock_out.transaction_no}' for customer '{db_stock_out.customer_name}'. Total: {db_stock_out.total_amount}. {len(db_items)} item(s).",
+        request=request
+    )
         
     return get_stock_out_by_id(db_stock_out.id, db)
 
@@ -215,6 +238,7 @@ def create_stock_out(
 @router.post("/transfer", response_model=schemas.StockTransferOut, status_code=status.HTTP_201_CREATED)
 def create_stock_transfer(
     payload: schemas.StockTransferCreate,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.require_staff_or_above)
 ):
@@ -333,6 +357,16 @@ def create_stock_transfer(
         
         # Trigger alerts for products
         check_and_trigger_notifications(db_item.product_id, db)
+
+    log_action(
+        db,
+        user=current_user,
+        action="transfer",
+        resource="transactions",
+        resource_id=str(db_transfer.id),
+        details=f"Stock Transfer '{db_transfer.transfer_no}' from warehouse ID {payload.source_warehouse_id} to warehouse ID {payload.destination_warehouse_id}. {len(db_items)} item(s).",
+        request=request
+    )
         
     return get_transfer_by_id(db_transfer.id, db)
 

@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
 from ..database import get_db
 from .. import models, schemas, auth
+from ..audit_helper import log_action
 
 router = APIRouter(prefix="/suppliers", tags=["Suppliers"])
 
@@ -21,6 +22,7 @@ def get_suppliers(
 @router.post("", response_model=schemas.SupplierOut, status_code=status.HTTP_201_CREATED)
 def create_supplier(
     supplier: schemas.SupplierCreate,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.require_manager_or_admin)
 ):
@@ -32,12 +34,24 @@ def create_supplier(
     db.add(db_supplier)
     db.commit()
     db.refresh(db_supplier)
+    
+    log_action(
+        db,
+        user=current_user,
+        action="create",
+        resource="suppliers",
+        resource_id=str(db_supplier.id),
+        details=f"Created supplier '{db_supplier.name}'",
+        request=request
+    )
+    
     return db_supplier
 
 @router.put("/{supplier_id}", response_model=schemas.SupplierOut)
 def update_supplier(
     supplier_id: int,
     supplier_data: schemas.SupplierCreate,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.require_manager_or_admin)
 ):
@@ -50,6 +64,7 @@ def update_supplier(
         if existing:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Supplier with this name already exists")
             
+    old_name = db_supplier.name
     db_supplier.name = supplier_data.name
     db_supplier.contact_name = supplier_data.contact_name
     db_supplier.phone = supplier_data.phone
@@ -58,11 +73,23 @@ def update_supplier(
     
     db.commit()
     db.refresh(db_supplier)
+    
+    log_action(
+        db,
+        user=current_user,
+        action="update",
+        resource="suppliers",
+        resource_id=str(db_supplier.id),
+        details=f"Updated supplier '{old_name}' details (Name changed to '{db_supplier.name}')",
+        request=request
+    )
+    
     return db_supplier
 
 @router.delete("/{supplier_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_supplier(
     supplier_id: int,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.require_manager_or_admin)
 ):
@@ -78,8 +105,22 @@ def delete_supplier(
             detail="Cannot delete supplier because it is referenced in Stock In transaction history"
         )
         
+    sup_id = db_supplier.id
+    sup_name = db_supplier.name
+    
     db.delete(db_supplier)
     db.commit()
+    
+    log_action(
+        db,
+        user=current_user,
+        action="delete",
+        resource="suppliers",
+        resource_id=str(sup_id),
+        details=f"Deleted supplier '{sup_name}'",
+        request=request
+    )
+    
     return None
 
 @router.get("/{supplier_id}/purchases", response_model=List[schemas.StockInOut])

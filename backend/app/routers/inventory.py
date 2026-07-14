@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
 from typing import List, Optional
 
 from ..database import get_db
 from .. import models, schemas, auth
+from ..audit_helper import log_action
 
 router = APIRouter(prefix="/inventory", tags=["Inventory Management"])
 
@@ -104,6 +105,7 @@ def get_inventory(
 @router.post("/adjust", response_model=schemas.InventoryAdjustmentOut)
 def adjust_inventory(
     adjustment: schemas.InventoryAdjustmentCreate,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.require_manager_or_admin)
 ):
@@ -170,6 +172,19 @@ def adjust_inventory(
     )
     db.add(db_movement)
     db.commit()
+
+    # Fetch product/warehouse names for the audit log details
+    _product = db.query(models.Product).filter(models.Product.id == adjustment.product_id).first()
+    _warehouse = db.query(models.Warehouse).filter(models.Warehouse.id == adjustment.warehouse_id).first()
+    log_action(
+        db,
+        user=current_user,
+        action="adjust",
+        resource="inventory",
+        resource_id=str(db_adjustment.id),
+        details=f"Inventory {adjustment.type} of {adjustment.quantity} units for product '{_product.name if _product else adjustment.product_id}' in warehouse '{_warehouse.name if _warehouse else adjustment.warehouse_id}'. Reason: {adjustment.reason}",
+        request=request
+    )
     
     check_and_trigger_notifications(adjustment.product_id, db)
     

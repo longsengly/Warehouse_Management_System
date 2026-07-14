@@ -217,3 +217,20 @@ class Notification(Base):
     created_at = Column(DateTime, server_default=func.now())
 
     product = relationship("Product")
+
+class AuditLog(Base):
+    __tablename__ = "audit_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    username = Column(String(50), nullable=False)
+    role = Column(String(20), nullable=False)
+    action = Column(String(50), nullable=False, index=True)
+    resource = Column(String(50), nullable=False, index=True)
+    resource_id = Column(String(50), nullable=True)
+    details = Column(Text, nullable=True)
+    ip_address = Column(String(45), nullable=True)
+    created_at = Column(DateTime, server_default=func.now(), index=True)
+
+    user = relationship("User")
+

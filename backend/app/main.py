@@ -4,7 +4,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from .config import settings
-from .routers import auth, products, categories, suppliers, warehouses, inventory, transactions, reports, notifications, users
+from .database import engine
+from . import models
+from .routers import auth, products, categories, suppliers, warehouses, inventory, transactions, reports, notifications, users, audit_logs
+
+# Auto-create database tables on startup
+models.Base.metadata.create_all(bind=engine)
 
 # Initialize static upload directories
 os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
@@ -45,6 +50,8 @@ app.include_router(transactions.router, prefix="/api")
 app.include_router(reports.router, prefix="/api")
 app.include_router(notifications.router, prefix="/api")
 app.include_router(users.router, prefix="/api")
+app.include_router(audit_logs.router, prefix="/api")
+
 
 @app.get("/")
 def root():

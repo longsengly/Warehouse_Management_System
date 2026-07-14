@@ -353,3 +353,20 @@ class DashboardStats(BaseModel):
     warehouse_stats: List[WarehouseStockStats]
     category_stats: List[CategoryStockStats]
     movement_chart: List[DailyMovementStats]
+
+# Audit Log Schemas
+class AuditLogOut(BaseModel):
+    id: int
+    user_id: Optional[int] = None
+    username: str
+    role: str
+    action: str
+    resource: str
+    resource_id: Optional[str] = None
+    details: Optional[str] = None
+    ip_address: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+

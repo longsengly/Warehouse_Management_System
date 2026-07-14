@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { Plus, Edit2, Trash2, Search, X, Loader, Filter, Upload, Barcode, Calendar, AlertTriangle } from 'lucide-react';
+import { Plus, Edit2, Trash2, Search, X, Loader, Filter, Upload, Barcode, Calendar, AlertTriangle, Download, FileSpreadsheet } from 'lucide-react';
 
 const Products = () => {
   const { isManager, isAdmin } = useAuth();
@@ -31,6 +31,13 @@ const Products = () => {
   
   const [uploadingImage, setUploadingImage] = useState(false);
   const [submitLoading, setSubmitLoading] = useState(false);
+
+  // Import Excel States
+  const [importModalOpen, setImportModalOpen] = useState(false);
+  const [importLoading, setImportLoading] = useState(false);
+  const [importFile, setImportFile] = useState(null);
+  const [importResults, setImportResults] = useState(null);
+  const [importErrors, setImportErrors] = useState([]);
 
   const fetchProductsAndCategories = async () => {
     setLoading(true);
@@ -170,6 +177,82 @@ const Products = () => {
     }
   };
 
+  const handleOpenImport = () => {
+    setImportFile(null);
+    setImportResults(null);
+    setImportErrors([]);
+    setImportModalOpen(true);
+  };
+
+  const handleExportExcel = async () => {
+    setError('');
+    setSuccess('');
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:8000/api/products/export/excel', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (!response.ok) {
+        throw new Error('Failed to export products. Please try again.');
+      }
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `products_export_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      setSuccess('Products catalog exported successfully');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) {
+      setError(err.message || 'Failed to export products');
+    }
+  };
+
+  const handleImportExcel = async (e) => {
+    e.preventDefault();
+    if (!importFile) return;
+
+    const formData = new FormData();
+    formData.append('file', importFile);
+
+    setImportLoading(true);
+    setImportErrors([]);
+    setImportResults(null);
+    setError('');
+
+    try {
+      const res = await api.upload('/products/import/excel', formData);
+      setImportResults({
+        created: res.created,
+        updated: res.updated,
+        message: res.message
+      });
+      setSuccess(`Import successful: ${res.created} created, ${res.updated} updated`);
+      fetchProductsAndCategories();
+      setImportFile(null);
+      setTimeout(() => setSuccess(''), 5000);
+    } catch (err) {
+      try {
+        const parsedErr = JSON.parse(err.message);
+        if (parsedErr && parsedErr.errors) {
+          setImportErrors(parsedErr.errors);
+        } else {
+          setError(parsedErr.message || err.message || 'Import failed');
+        }
+      } catch (e) {
+        setError(err.message || 'Import failed');
+      }
+    } finally {
+      setImportLoading(false);
+    }
+  };
+
   return (
     <div>
       {/* Messages */}
@@ -227,13 +310,25 @@ const Products = () => {
           </label>
         </div>
 
-        {/* Add Product Button */}
-        {isManager && (
-          <button className="btn btn-primary" onClick={handleOpenCreate}>
-            <Plus size={18} />
-            Add Product
+        {/* Actions Button Group */}
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          <button className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }} onClick={handleExportExcel} title="Export Catalog to Excel">
+            <Download size={18} />
+            Export
           </button>
-        )}
+          {isManager && (
+            <button className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }} onClick={handleOpenImport} title="Import Catalog from Excel">
+              <FileSpreadsheet size={18} />
+              Import
+            </button>
+          )}
+          {isManager && (
+            <button className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }} onClick={handleOpenCreate}>
+              <Plus size={18} />
+              Add Product
+            </button>
+          )}
+        </div>
       </div>
 
       {loading && <div style={{ textAlign: 'center', padding: '3rem 0', color: 'var(--text-muted)' }}>Loading products...</div>}
@@ -526,6 +621,169 @@ const Products = () => {
                 </button>
                 <button type="submit" className="btn btn-primary" disabled={submitLoading || uploadingImage}>
                   {submitLoading ? <Loader className="animate-spin" size={16} /> : (currentProduct ? 'Update' : 'Create')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Excel Import Modal */}
+      {importModalOpen && (
+        <div className="modal-overlay" style={{ zIndex: 1100 }}>
+          <div className="modal-content" style={{ maxWidth: '550px' }}>
+            <div className="modal-header">
+              <h3 style={{ fontWeight: 800, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <FileSpreadsheet className="text-success" size={24} />
+                Import Product Catalog
+              </h3>
+              <button onClick={() => setImportModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}>
+                <X size={20} />
+              </button>
+            </div>
+            
+            <form onSubmit={handleImportExcel}>
+              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', margin: 0 }}>
+                  Upload an Excel spreadsheet to bulk add or update products in your catalog.
+                </p>
+
+                {/* Requirements details */}
+                <div style={{ backgroundColor: 'var(--bg-primary)', padding: '0.85rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', fontSize: '0.85rem' }}>
+                  <div style={{ fontWeight: 700, marginBottom: '0.5rem', color: 'var(--text-primary)' }}>Required Columns:</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '0.75rem' }}>
+                    <span style={{ backgroundColor: 'var(--danger-light)', color: 'var(--danger)', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>SKU *</span>
+                    <span style={{ backgroundColor: 'var(--danger-light)', color: 'var(--danger)', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>Product Name *</span>
+                    <span style={{ backgroundColor: 'var(--danger-light)', color: 'var(--danger)', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>Cost Price *</span>
+                    <span style={{ backgroundColor: 'var(--danger-light)', color: 'var(--danger)', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>Selling Price *</span>
+                  </div>
+                  <div style={{ fontWeight: 700, marginBottom: '0.5rem', color: 'var(--text-primary)' }}>Optional Columns:</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                    <span style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-secondary)', padding: '2px 8px', borderRadius: '4px' }}>Barcode</span>
+                    <span style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-secondary)', padding: '2px 8px', borderRadius: '4px' }}>Description</span>
+                    <span style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-secondary)', padding: '2px 8px', borderRadius: '4px' }}>Category</span>
+                    <span style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-secondary)', padding: '2px 8px', borderRadius: '4px' }}>Min Stock Alert</span>
+                    <span style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-secondary)', padding: '2px 8px', borderRadius: '4px' }}>Unit of Measure</span>
+                    <span style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-secondary)', padding: '2px 8px', borderRadius: '4px' }}>Expiry Date (YYYY-MM-DD)</span>
+                  </div>
+                </div>
+
+                {/* Template Download Option */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--success-light)', color: 'var(--success)', padding: '0.75rem 1rem', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(46, 117, 89, 0.2)' }}>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Need a template or current catalog data?</span>
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={handleExportExcel} style={{ color: 'var(--success)', borderColor: 'var(--success)', display: 'flex', alignItems: 'center', gap: '4px', backgroundColor: 'transparent' }}>
+                    <Download size={14} /> Download Template
+                  </button>
+                </div>
+
+                {/* File Upload Drop Area */}
+                <div 
+                  style={{
+                    border: '2px dashed var(--border-color)',
+                    borderRadius: 'var(--radius-md)',
+                    padding: '2rem 1.5rem',
+                    textAlign: 'center',
+                    backgroundColor: 'var(--bg-primary)',
+                    cursor: 'pointer',
+                    position: 'relative',
+                    transition: 'all 0.2s ease',
+                  }}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                      setImportFile(e.dataTransfer.files[0]);
+                    }
+                  }}
+                >
+                  <input
+                    type="file"
+                    accept=".xlsx, .xls"
+                    onChange={(e) => setImportFile(e.target.files[0])}
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: '100%',
+                      opacity: 0,
+                      cursor: 'pointer'
+                    }}
+                    disabled={importLoading}
+                  />
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
+                    <FileSpreadsheet size={40} style={{ color: 'var(--text-muted)' }} />
+                    <div>
+                      <span style={{ fontWeight: 700, color: 'var(--primary)' }}>Click to upload</span> or drag and drop
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Excel files (.xlsx, .xls) up to 10MB</div>
+                  </div>
+                </div>
+
+                {/* Selected File Card */}
+                {importFile && (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem 1rem', borderRadius: 'var(--radius-sm)', backgroundColor: 'var(--bg-hover)', border: '1px solid var(--border-color)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                      <FileSpreadsheet size={20} className="text-success" style={{ flexShrink: 0 }} />
+                      <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600, fontSize: '0.9rem' }}>
+                        {importFile.name}
+                      </div>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', flexShrink: 0 }}>
+                        ({(importFile.size / 1024).toFixed(1)} KB)
+                      </span>
+                    </div>
+                    <button type="button" onClick={() => setImportFile(null)} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                      <X size={18} />
+                    </button>
+                  </div>
+                )}
+
+                {/* Import Loading Indicator */}
+                {importLoading && (
+                  <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--text-secondary)' }}>
+                    <Loader className="animate-spin" size={24} style={{ margin: '0 auto 0.5rem' }} />
+                    <div style={{ fontWeight: 600 }}>Processing Import...</div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>Reading file and updating database records</div>
+                  </div>
+                )}
+
+                {/* Import Results Success message */}
+                {importResults && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '1rem', borderRadius: 'var(--radius-sm)', backgroundColor: 'var(--success-light)', borderLeft: '4px solid var(--success)', color: 'var(--success)' }}>
+                    <div style={{ fontWeight: 700, fontSize: '1rem' }}>Import Completed Successfully!</div>
+                    <div style={{ fontSize: '0.9rem' }}>
+                      • <strong>{importResults.created}</strong> new products created.<br />
+                      • <strong>{importResults.updated}</strong> existing products updated.
+                    </div>
+                  </div>
+                )}
+
+                {/* Import Errors Alert */}
+                {importErrors.length > 0 && (
+                  <div style={{ padding: '1rem', borderRadius: 'var(--radius-sm)', backgroundColor: 'var(--danger-light)', borderLeft: '4px solid var(--danger)', color: 'var(--danger)' }}>
+                    <div style={{ fontWeight: 700, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '0.5rem' }}>
+                      <AlertTriangle size={18} />
+                      Validation Failed ({importErrors.length} Errors Found)
+                    </div>
+                    <p style={{ fontSize: '0.85rem', margin: '0 0 0.5rem 0' }}>
+                      No data was imported. Please correct the following errors in your spreadsheet and upload again:
+                    </p>
+                    <ul style={{ maxHeight: '180px', overflowY: 'auto', margin: 0, paddingLeft: '1.25rem', fontSize: '0.85rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      {importErrors.map((err, i) => (
+                        <li key={i} style={{ fontWeight: 500 }}>{err}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+              
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={() => setImportModalOpen(false)} disabled={importLoading}>
+                  Close
+                </button>
+                <button type="submit" className="btn btn-primary" disabled={importLoading || !importFile} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  {importLoading ? <Loader className="animate-spin" size={16} /> : <FileSpreadsheet size={16} />}
+                  Start Import
                 </button>
               </div>
             </form>

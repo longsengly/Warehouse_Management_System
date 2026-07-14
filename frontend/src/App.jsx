@@ -17,6 +17,7 @@ import StockOut from './pages/StockOut';
 import StockTransfer from './pages/StockTransfer';
 import Reports from './pages/Reports';
 import Users from './pages/Users';
+import AuditLogs from './pages/AuditLogs';
 
 // Route Guard for authenticated pages
 const ProtectedRoute = ({ requiredRole }) => {
@@ -100,7 +101,8 @@ const LayoutWrapper = () => {
     'stock-out': 'Dispatch Stock Out',
     'stock-transfer': 'Inter-Warehouse Transfers',
     'reports': 'System Reports & Logs',
-    'users': 'User Account Management'
+    'users': 'User Account Management',
+    'audit-logs': 'Audit Logs Overview'
   };
 
   const currentPageName = pageTitles[path] || 'Warehouse Management';
@@ -145,6 +147,11 @@ function App() {
                 {/* Admin Only Route */}
                 <Route element={<ProtectedRoute requiredRole="admin" />}>
                   <Route path="/users" element={<Users />} />
+                </Route>
+
+                {/* Admin + Manager Route */}
+                <Route element={<ProtectedRoute requiredRole="manager" />}>
+                  <Route path="/audit-logs" element={<AuditLogs />} />
                 </Route>
               </Route>
             </Route>

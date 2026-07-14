@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
 from ..database import get_db
 from .. import models, schemas, auth
+from ..audit_helper import log_action
 
 router = APIRouter(prefix="/warehouses", tags=["Warehouses"])
 
@@ -21,6 +22,7 @@ def get_warehouses(
 @router.post("", response_model=schemas.WarehouseOut, status_code=status.HTTP_201_CREATED)
 def create_warehouse(
     warehouse: schemas.WarehouseCreate,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.require_manager_or_admin)
 ):
@@ -32,12 +34,24 @@ def create_warehouse(
     db.add(db_warehouse)
     db.commit()
     db.refresh(db_warehouse)
+    
+    log_action(
+        db,
+        user=current_user,
+        action="create",
+        resource="warehouses",
+        resource_id=str(db_warehouse.id),
+        details=f"Created warehouse '{db_warehouse.name}' at '{db_warehouse.location}'",
+        request=request
+    )
+    
     return db_warehouse
 
 @router.put("/{warehouse_id}", response_model=schemas.WarehouseOut)
 def update_warehouse(
     warehouse_id: int,
     warehouse_data: schemas.WarehouseCreate,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.require_manager_or_admin)
 ):
@@ -50,17 +64,30 @@ def update_warehouse(
         if existing:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Warehouse with this name already exists")
             
+    old_name = db_warehouse.name
     db_warehouse.name = warehouse_data.name
     db_warehouse.location = warehouse_data.location
     db_warehouse.capacity = warehouse_data.capacity
     
     db.commit()
     db.refresh(db_warehouse)
+    
+    log_action(
+        db,
+        user=current_user,
+        action="update",
+        resource="warehouses",
+        resource_id=str(db_warehouse.id),
+        details=f"Updated warehouse '{old_name}' details (Name changed to '{db_warehouse.name}')",
+        request=request
+    )
+    
     return db_warehouse
 
 @router.delete("/{warehouse_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_warehouse(
     warehouse_id: int,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.require_manager_or_admin)
 ):
@@ -88,9 +115,23 @@ def delete_warehouse(
             detail="Cannot delete warehouse because it is referenced in past transaction histories"
         )
         
+    wh_id = db_warehouse.id
+    wh_name = db_warehouse.name
+    
     # Delete empty inventory records first to prevent foreign key errors
     db.query(models.Inventory).filter(models.Inventory.warehouse_id == warehouse_id).delete()
     
     db.delete(db_warehouse)
     db.commit()
+    
+    log_action(
+        db,
+        user=current_user,
+        action="delete",
+        resource="warehouses",
+        resource_id=str(wh_id),
+        details=f"Deleted warehouse '{wh_name}'",
+        request=request
+    )
+    
     return None

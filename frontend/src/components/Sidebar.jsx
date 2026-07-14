@@ -13,7 +13,8 @@ import {
   BarChart3, 
   Users, 
   LogOut,
-  Warehouse
+  Warehouse,
+  ShieldCheck
 } from 'lucide-react';
 
 const Sidebar = ({ currentPage, setCurrentPage }) => {
@@ -31,6 +32,7 @@ const Sidebar = ({ currentPage, setCurrentPage }) => {
     { id: 'stock-transfer', name: 'Stock Transfer', icon: <ArrowLeftRight size={20} />, roles: ['admin', 'manager', 'staff'] },
     { id: 'reports', name: 'Reports', icon: <BarChart3 size={20} />, roles: ['admin', 'manager', 'staff'] },
     { id: 'users', name: 'User Management', icon: <Users size={20} />, roles: ['admin'] },
+    { id: 'audit-logs', name: 'Audit Logs', icon: <ShieldCheck size={20} />, roles: ['admin', 'manager'] },
   ];
 
   const filteredItems = menuItems.filter(item => user && item.roles.includes(user.role));

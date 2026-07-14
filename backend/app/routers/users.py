@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
 from ..database import get_db
 from .. import models, schemas, auth
+from ..audit_helper import log_action
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -17,6 +18,7 @@ def get_users(
 @router.post("", response_model=schemas.UserOut, status_code=status.HTTP_201_CREATED)
 def create_user(
     user_in: schemas.UserCreate,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.require_admin)
 ):
@@ -41,12 +43,24 @@ def create_user(
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
+
+    log_action(
+        db,
+        user=current_user,
+        action="create",
+        resource="users",
+        resource_id=str(db_user.id),
+        details=f"Created user '{db_user.username}' with role '{db_user.role}'",
+        request=request
+    )
+
     return db_user
 
 @router.put("/{user_id}", response_model=schemas.UserOut)
 def update_user(
     user_id: int,
     user_data: schemas.UserUpdate,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.require_admin)
 ):
@@ -58,6 +72,9 @@ def update_user(
     if user_id == current_user.id and user_data.is_active is False:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="You cannot deactivate your own account")
         
+    old_username = db_user.username
+    old_role = db_user.role
+
     # Update fields
     if user_data.full_name is not None:
         db_user.full_name = user_data.full_name
@@ -75,11 +92,23 @@ def update_user(
         
     db.commit()
     db.refresh(db_user)
+
+    log_action(
+        db,
+        user=current_user,
+        action="update",
+        resource="users",
+        resource_id=str(db_user.id),
+        details=f"Updated user '{old_username}' (role: {old_role} -> {db_user.role}, active: {db_user.is_active})",
+        request=request
+    )
+
     return db_user
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_user(
     user_id: int,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.require_admin)
 ):
@@ -107,7 +136,22 @@ def delete_user(
             status_code=status.HTTP_400_BAD_REQUEST, 
             detail="Cannot delete user because they have registered transaction records. You can deactivate them instead."
         )
+
+    deleted_username = db_user.username
+    deleted_role = db_user.role
+    deleted_id = db_user.id
         
     db.delete(db_user)
     db.commit()
+
+    log_action(
+        db,
+        user=current_user,
+        action="delete",
+        resource="users",
+        resource_id=str(deleted_id),
+        details=f"Deleted user '{deleted_username}' (role: {deleted_role})",
+        request=request
+    )
+
     return None
