@@ -244,9 +244,9 @@ const Reports = () => {
                       <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 700 }}>{item.current_stock.toLocaleString()}</td>
                       <td style={{ padding: '0.75rem', textAlign: 'right', color: 'var(--text-muted)' }}>{item.reserved_stock.toLocaleString()}</td>
                       <td style={{ padding: '0.75rem', color: 'var(--text-secondary)' }}>{item.unit}</td>
-                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>${(item.cost_price ?? 0).toFixed(2)}</td>
+                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>${Number(item.cost_price ?? 0).toFixed(2)}</td>
                       <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 800, color: 'var(--success)' }}>
-                        ${(item.current_stock * (item.cost_price ?? 0)).toFixed(2)}
+                        ${(item.current_stock * Number(item.cost_price ?? 0)).toFixed(2)}
                       </td>
                     </tr>
                   ))}
@@ -273,7 +273,7 @@ const Reports = () => {
                       <td style={{ padding: '0.75rem' }}>{new Date(item.receive_date).toLocaleString()}</td>
                       <td style={{ padding: '0.75rem', color: 'var(--text-primary)' }}>{item.supplier_name}</td>
                       <td style={{ padding: '0.75rem' }}>@{item.username}</td>
-                      <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 800 }}>${item.total_amount.toFixed(2)}</td>
+                      <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 800 }}>${Number(item.total_amount).toFixed(2)}</td>
                       <td style={{ padding: '0.75rem', textAlign: 'center' }}>
                         <span className="badge badge-success" style={{ fontSize: '0.65rem', padding: '2px 6px' }}>{item.status}</span>
                       </td>
@@ -302,7 +302,7 @@ const Reports = () => {
                       <td style={{ padding: '0.75rem' }}>{new Date(item.issue_date).toLocaleString()}</td>
                       <td style={{ padding: '0.75rem', color: 'var(--text-primary)' }}>{item.customer_name}</td>
                       <td style={{ padding: '0.75rem' }}>@{item.username}</td>
-                      <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 800 }}>${item.total_amount.toFixed(2)}</td>
+                      <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 800 }}>${Number(item.total_amount).toFixed(2)}</td>
                       <td style={{ padding: '0.75rem', textAlign: 'center' }}>
                         <span className="badge badge-success" style={{ fontSize: '0.65rem', padding: '2px 6px' }}>{item.status}</span>
                       </td>

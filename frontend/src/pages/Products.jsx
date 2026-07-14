@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { Plus, Edit2, Trash2, Search, X, Loader, Filter, Upload, Barcode, Calendar, AlertTriangle } from 'lucide-react';
 
 const Products = () => {
-  const { isManager } = useAuth();
+  const { isManager, isAdmin } = useAuth();
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [search, setSearch] = useState('');
@@ -303,13 +303,15 @@ const Products = () => {
                         >
                           <Edit2 size={14} />
                         </button>
-                        <button 
-                          className="btn btn-danger btn-sm" 
-                          onClick={() => handleDelete(prod.id)}
-                          title="Delete product"
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                        {isAdmin && (
+                          <button 
+                            className="btn btn-danger btn-sm" 
+                            onClick={() => handleDelete(prod.id)}
+                            title="Delete product"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
                       </div>
                     </td>
                   )}

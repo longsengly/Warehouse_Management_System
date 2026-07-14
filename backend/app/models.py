@@ -73,7 +73,7 @@ class Inventory(Base):
     __tablename__ = "inventory"
 
     id = Column(Integer, primary_key=True, index=True)
-    product_id = Column(Integer, ForeignKey("products.id", ondelete="RESTRICT"), nullable=False)
+    product_id = Column(Integer, ForeignKey("products.id", ondelete="CASCADE"), nullable=False)
     warehouse_id = Column(Integer, ForeignKey("warehouses.id", ondelete="RESTRICT"), nullable=False)
     current_stock = Column(Integer, default=0)
     reserved_stock = Column(Integer, default=0)
@@ -86,7 +86,7 @@ class InventoryAdjustment(Base):
     __tablename__ = "inventory_adjustments"
 
     id = Column(Integer, primary_key=True, index=True)
-    product_id = Column(Integer, ForeignKey("products.id", ondelete="RESTRICT"), nullable=False)
+    product_id = Column(Integer, ForeignKey("products.id", ondelete="CASCADE"), nullable=False)
     warehouse_id = Column(Integer, ForeignKey("warehouses.id", ondelete="RESTRICT"), nullable=False)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
     type = Column(Enum("increase", "decrease", name="adjustment_types"), nullable=False)
@@ -119,7 +119,7 @@ class StockInItem(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     stock_in_id = Column(Integer, ForeignKey("stock_in.id", ondelete="CASCADE"), nullable=False)
-    product_id = Column(Integer, ForeignKey("products.id", ondelete="RESTRICT"), nullable=False)
+    product_id = Column(Integer, ForeignKey("products.id", ondelete="CASCADE"), nullable=False)
     warehouse_id = Column(Integer, ForeignKey("warehouses.id", ondelete="RESTRICT"), nullable=False)
     batch_number = Column(String(50))
     expiry_date = Column(Date, nullable=True)
@@ -151,7 +151,7 @@ class StockOutItem(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     stock_out_id = Column(Integer, ForeignKey("stock_out.id", ondelete="CASCADE"), nullable=False)
-    product_id = Column(Integer, ForeignKey("products.id", ondelete="RESTRICT"), nullable=False)
+    product_id = Column(Integer, ForeignKey("products.id", ondelete="CASCADE"), nullable=False)
     warehouse_id = Column(Integer, ForeignKey("warehouses.id", ondelete="RESTRICT"), nullable=False)
     quantity = Column(Integer, nullable=False)
     selling_price = Column(Numeric(10, 2), nullable=False)
@@ -183,7 +183,7 @@ class StockTransferItem(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     stock_transfer_id = Column(Integer, ForeignKey("stock_transfers.id", ondelete="CASCADE"), nullable=False)
-    product_id = Column(Integer, ForeignKey("products.id", ondelete="RESTRICT"), nullable=False)
+    product_id = Column(Integer, ForeignKey("products.id", ondelete="CASCADE"), nullable=False)
     quantity = Column(Integer, nullable=False)
     created_at = Column(DateTime, server_default=func.now())
 
@@ -194,12 +194,12 @@ class InventoryMovement(Base):
     __tablename__ = "inventory_movements"
 
     id = Column(Integer, primary_key=True, index=True)
-    product_id = Column(Integer, ForeignKey("products.id", ondelete="RESTRICT"), nullable=False)
-    warehouse_id = Column(Integer, ForeignKey("warehouses.id", ondelete="RESTRICT"), nullable=False)
+    product_id = Column(Integer, ForeignKey("products.id", ondelete="CASCADE"), nullable=False)
+    warehouse_id = Column(Integer, ForeignKey("warehouses.id", ondelete="CASCADE"), nullable=False)
     quantity_changed = Column(Integer, nullable=False)
     type = Column(Enum("stock_in", "stock_out", "transfer_out", 'transfer_in', "adjustment", name="movement_types"), nullable=False)
     reference_id = Column(Integer, nullable=False)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     created_at = Column(DateTime, server_default=func.now())
 
     product = relationship("Product")

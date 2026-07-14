@@ -174,7 +174,7 @@ def update_product(
 def delete_product(
     product_id: int,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.require_manager_or_admin)
+    current_user: models.User = Depends(auth.require_admin)
 ):
     db_product = db.query(models.Product).filter(models.Product.id == product_id).first()
     if not db_product:

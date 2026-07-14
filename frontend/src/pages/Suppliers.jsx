@@ -362,13 +362,13 @@ const Suppliers = () => {
                         {po.items.map((item, i) => (
                           <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                             <span>{item.product_name} (SKU: {item.sku}) • Batch: {item.batch_number || 'N/A'}</span>
-                            <span>{item.quantity} units x ${item.cost_price.toFixed(2)} = <strong>${(item.quantity * item.cost_price).toFixed(2)}</strong></span>
+                            <span>{item.quantity} units x ${Number(item.cost_price).toFixed(2)} = <strong>${(item.quantity * item.cost_price).toFixed(2)}</strong></span>
                           </div>
                         ))}
                       </div>
 
                       <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--border-color)', marginTop: '0.5rem', paddingTop: '0.5rem' }}>
-                        <span style={{ fontWeight: 800 }}>Total Value: ${po.total_amount.toFixed(2)}</span>
+                        <span style={{ fontWeight: 800 }}>Total Value: ${Number(po.total_amount).toFixed(2)}</span>
                       </div>
                     </div>
                   ))}
