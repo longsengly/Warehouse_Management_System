@@ -10,6 +10,11 @@ const Reports = () => {
   const [search, setSearch] = useState('');
   const [downloadLoading, setDownloadLoading] = useState({});
 
+  const handleTabChange = (type) => {
+    setData([]);
+    setReportType(type);
+  };
+
   const fetchReportPreview = async (type) => {
     setLoading(true);
     setError('');
@@ -80,24 +85,25 @@ const Reports = () => {
 
   // Filter logic based on type
   const getFilteredData = () => {
+    if (!data || !Array.isArray(data)) return [];
     const searchLower = search.toLowerCase();
     if (reportType === 'inventory') {
       return data.filter(item => 
-        item.product_name.toLowerCase().includes(searchLower) ||
-        item.sku.toLowerCase().includes(searchLower) ||
-        item.warehouse_name.toLowerCase().includes(searchLower)
+        (item?.product_name || '').toLowerCase().includes(searchLower) ||
+        (item?.sku || '').toLowerCase().includes(searchLower) ||
+        (item?.warehouse_name || '').toLowerCase().includes(searchLower)
       );
     } else if (reportType === 'stock_in') {
       return data.filter(item => 
-        item.transaction_no.toLowerCase().includes(searchLower) ||
-        item.supplier_name.toLowerCase().includes(searchLower) ||
-        item.username.toLowerCase().includes(searchLower)
+        (item?.transaction_no || '').toLowerCase().includes(searchLower) ||
+        (item?.supplier_name || '').toLowerCase().includes(searchLower) ||
+        (item?.username || '').toLowerCase().includes(searchLower)
       );
     } else if (reportType === 'stock_out') {
       return data.filter(item => 
-        item.transaction_no.toLowerCase().includes(searchLower) ||
-        item.customer_name.toLowerCase().includes(searchLower) ||
-        item.username.toLowerCase().includes(searchLower)
+        (item?.transaction_no || '').toLowerCase().includes(searchLower) ||
+        (item?.customer_name || '').toLowerCase().includes(searchLower) ||
+        (item?.username || '').toLowerCase().includes(searchLower)
       );
     }
     return data;
@@ -120,7 +126,7 @@ const Reports = () => {
         {/* Toggle Report Type */}
         <div style={{ display: 'flex', gap: '0.5rem', backgroundColor: 'var(--bg-primary)', padding: '4px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
           <button
-            onClick={() => setReportType('inventory')}
+            onClick={() => handleTabChange('inventory')}
             style={{
               padding: '0.5rem 1rem',
               borderRadius: 'var(--radius-xs)',
@@ -136,7 +142,7 @@ const Reports = () => {
             Inventory Stock
           </button>
           <button
-            onClick={() => setReportType('stock_in')}
+            onClick={() => handleTabChange('stock_in')}
             style={{
               padding: '0.5rem 1rem',
               borderRadius: 'var(--radius-xs)',
@@ -152,7 +158,7 @@ const Reports = () => {
             Stock In Logs
           </button>
           <button
-            onClick={() => setReportType('stock_out')}
+            onClick={() => handleTabChange('stock_out')}
             style={{
               padding: '0.5rem 1rem',
               borderRadius: 'var(--radius-xs)',
@@ -241,12 +247,12 @@ const Reports = () => {
                       <td style={{ padding: '0.75rem', fontWeight: 700 }}>{item.sku}</td>
                       <td style={{ padding: '0.75rem', color: 'var(--text-primary)' }}>{item.product_name}</td>
                       <td style={{ padding: '0.75rem' }}>{item.warehouse_name}</td>
-                      <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 700 }}>{item.current_stock.toLocaleString()}</td>
-                      <td style={{ padding: '0.75rem', textAlign: 'right', color: 'var(--text-muted)' }}>{item.reserved_stock.toLocaleString()}</td>
+                      <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 700 }}>{(item.current_stock ?? 0).toLocaleString()}</td>
+                      <td style={{ padding: '0.75rem', textAlign: 'right', color: 'var(--text-muted)' }}>{(item.reserved_stock ?? 0).toLocaleString()}</td>
                       <td style={{ padding: '0.75rem', color: 'var(--text-secondary)' }}>{item.unit}</td>
                       <td style={{ padding: '0.75rem', textAlign: 'right' }}>${Number(item.cost_price ?? 0).toFixed(2)}</td>
                       <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 800, color: 'var(--success)' }}>
-                        ${(item.current_stock * Number(item.cost_price ?? 0)).toFixed(2)}
+                        ${((item.current_stock ?? 0) * Number(item.cost_price ?? 0)).toFixed(2)}
                       </td>
                     </tr>
                   ))}

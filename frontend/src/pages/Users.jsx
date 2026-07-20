@@ -138,10 +138,10 @@ const Users = () => {
   const filteredUsers = users.filter((u) => {
     const searchLower = search.toLowerCase();
     return (
-      u.username.toLowerCase().includes(searchLower) ||
-      u.full_name.toLowerCase().includes(searchLower) ||
-      u.email.toLowerCase().includes(searchLower) ||
-      u.role.toLowerCase().includes(searchLower)
+      (u?.username || '').toLowerCase().includes(searchLower) ||
+      (u?.full_name || '').toLowerCase().includes(searchLower) ||
+      (u?.email || '').toLowerCase().includes(searchLower) ||
+      (u?.role || '').toLowerCase().includes(searchLower)
     );
   });
 

@@ -164,10 +164,10 @@ const StockTransfer = () => {
   const filteredTransfers = transfers.filter(tr => {
     const sTerm = search.toLowerCase();
     return (
-      tr.transfer_no.toLowerCase().includes(sTerm) ||
-      tr.source_warehouse_name.toLowerCase().includes(sTerm) ||
-      tr.destination_warehouse_name.toLowerCase().includes(sTerm) ||
-      tr.username.toLowerCase().includes(sTerm)
+      (tr?.transfer_no || '').toLowerCase().includes(sTerm) ||
+      (tr?.source_warehouse_name || '').toLowerCase().includes(sTerm) ||
+      (tr?.destination_warehouse_name || '').toLowerCase().includes(sTerm) ||
+      (tr?.username || '').toLowerCase().includes(sTerm)
     );
   });
 

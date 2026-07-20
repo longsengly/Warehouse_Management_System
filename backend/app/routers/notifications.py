@@ -4,6 +4,7 @@ from typing import List, Optional
 
 from ..database import get_db
 from .. import models, schemas, auth
+from .inventory import check_and_trigger_all_notifications
 
 router = APIRouter(prefix="/notifications", tags=["Notifications"])
 
@@ -13,6 +14,7 @@ def get_notifications(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.require_staff_or_above)
 ):
+    check_and_trigger_all_notifications(db)
     query = db.query(
         models.Notification.id,
         models.Notification.message,

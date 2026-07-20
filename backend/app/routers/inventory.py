@@ -68,6 +68,72 @@ def check_and_trigger_notifications(product_id: int, db: Session):
                 
     db.commit()
 
+def check_and_trigger_all_notifications(db: Session):
+    products = db.query(models.Product).all()
+    
+    # Get total stock for each product
+    stock_sums = db.query(
+        models.Inventory.product_id,
+        func.sum(models.Inventory.current_stock).label("total_stock")
+    ).group_by(models.Inventory.product_id).all()
+    
+    stock_map = {item.product_id: item.total_stock or 0 for item in stock_sums}
+    
+    import datetime
+    today = datetime.date.today()
+    
+    for product in products:
+        total_stock = stock_map.get(product.id, 0)
+        
+        # Check Out of Stock
+        if total_stock <= 0:
+            existing = db.query(models.Notification).filter(
+                models.Notification.product_id == product.id,
+                models.Notification.type == "out_of_stock",
+                models.Notification.is_read == False
+            ).first()
+            if not existing:
+                new_notif = models.Notification(
+                    message=f"Product '{product.name}' (SKU: {product.sku}) is completely out of stock!",
+                    type="out_of_stock",
+                    product_id=product.id
+                )
+                db.add(new_notif)
+                
+        # Check Low Stock
+        elif total_stock <= product.min_stock:
+            existing = db.query(models.Notification).filter(
+                models.Notification.product_id == product.id,
+                models.Notification.type == "low_stock",
+                models.Notification.is_read == False
+            ).first()
+            if not existing:
+                new_notif = models.Notification(
+                    message=f"Product '{product.name}' (SKU: {product.sku}) has low stock! Current: {total_stock} {product.unit} (Min: {product.min_stock})",
+                    type="low_stock",
+                    product_id=product.id
+                )
+                db.add(new_notif)
+                
+        # Check Expiring Soon
+        if product.expiry_date:
+            days_left = (product.expiry_date - today).days
+            if 0 < days_left <= 30:
+                existing = db.query(models.Notification).filter(
+                    models.Notification.product_id == product.id,
+                    models.Notification.type == "expiring_soon",
+                    models.Notification.is_read == False
+                ).first()
+                if not existing:
+                    new_notif = models.Notification(
+                        message=f"Product '{product.name}' (SKU: {product.sku}) is expiring soon on {product.expiry_date}! ({days_left} days left)",
+                        type="expiring_soon",
+                        product_id=product.id
+                    )
+                    db.add(new_notif)
+                    
+    db.commit()
+
 @router.get("", response_model=List[schemas.InventoryOut])
 def get_inventory(
     search: Optional[str] = None,
