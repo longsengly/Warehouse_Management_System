@@ -10,6 +10,10 @@ class Settings(BaseSettings):
     # Static Uploads directory
     UPLOAD_DIR: str = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static", "uploads")
 
+    # Telegram Bot configuration (optional — leave empty to disable)
+    TELEGRAM_BOT_TOKEN: str = ""
+    TELEGRAM_CHAT_ID: str = ""
+
     class Config:
         env_file = ".env"
         extra = "ignore"

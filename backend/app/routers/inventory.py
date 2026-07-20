@@ -6,6 +6,7 @@ from typing import List, Optional
 from ..database import get_db
 from .. import models, schemas, auth
 from ..audit_helper import log_action
+from ..telegram_service import send_notification_async
 
 router = APIRouter(prefix="/inventory", tags=["Inventory Management"])
 
@@ -26,12 +27,14 @@ def check_and_trigger_notifications(product_id: int, db: Session):
             models.Notification.is_read == False
         ).first()
         if not existing:
+            msg = f"Product '{product.name}' (SKU: {product.sku}) is completely out of stock!"
             new_notif = models.Notification(
-                message=f"Product '{product.name}' (SKU: {product.sku}) is completely out of stock!",
+                message=msg,
                 type="out_of_stock",
                 product_id=product_id
             )
             db.add(new_notif)
+            send_notification_async("out_of_stock", msg, product.name)
             
     # Check Low Stock
     elif total_stock <= product.min_stock:
@@ -41,12 +44,14 @@ def check_and_trigger_notifications(product_id: int, db: Session):
             models.Notification.is_read == False
         ).first()
         if not existing:
+            msg = f"Product '{product.name}' (SKU: {product.sku}) has low stock! Current: {total_stock} {product.unit} (Min: {product.min_stock})"
             new_notif = models.Notification(
-                message=f"Product '{product.name}' (SKU: {product.sku}) has low stock! Current: {total_stock} {product.unit} (Min: {product.min_stock})",
+                message=msg,
                 type="low_stock",
                 product_id=product_id
             )
             db.add(new_notif)
+            send_notification_async("low_stock", msg, product.name)
             
     # Check if expiring soon
     if product.expiry_date:
@@ -59,12 +64,14 @@ def check_and_trigger_notifications(product_id: int, db: Session):
                 models.Notification.is_read == False
             ).first()
             if not existing:
+                msg = f"Product '{product.name}' (SKU: {product.sku}) is expiring soon on {product.expiry_date}! ({days_left} days left)"
                 new_notif = models.Notification(
-                    message=f"Product '{product.name}' (SKU: {product.sku}) is expiring soon on {product.expiry_date}! ({days_left} days left)",
+                    message=msg,
                     type="expiring_soon",
                     product_id=product_id
                 )
                 db.add(new_notif)
+                send_notification_async("expiring_soon", msg, product.name)
                 
     db.commit()
 
@@ -93,12 +100,14 @@ def check_and_trigger_all_notifications(db: Session):
                 models.Notification.is_read == False
             ).first()
             if not existing:
+                msg = f"Product '{product.name}' (SKU: {product.sku}) is completely out of stock!"
                 new_notif = models.Notification(
-                    message=f"Product '{product.name}' (SKU: {product.sku}) is completely out of stock!",
+                    message=msg,
                     type="out_of_stock",
                     product_id=product.id
                 )
                 db.add(new_notif)
+                send_notification_async("out_of_stock", msg, product.name)
                 
         # Check Low Stock
         elif total_stock <= product.min_stock:
@@ -108,12 +117,14 @@ def check_and_trigger_all_notifications(db: Session):
                 models.Notification.is_read == False
             ).first()
             if not existing:
+                msg = f"Product '{product.name}' (SKU: {product.sku}) has low stock! Current: {total_stock} {product.unit} (Min: {product.min_stock})"
                 new_notif = models.Notification(
-                    message=f"Product '{product.name}' (SKU: {product.sku}) has low stock! Current: {total_stock} {product.unit} (Min: {product.min_stock})",
+                    message=msg,
                     type="low_stock",
                     product_id=product.id
                 )
                 db.add(new_notif)
+                send_notification_async("low_stock", msg, product.name)
                 
         # Check Expiring Soon
         if product.expiry_date:
@@ -125,12 +136,14 @@ def check_and_trigger_all_notifications(db: Session):
                     models.Notification.is_read == False
                 ).first()
                 if not existing:
+                    msg = f"Product '{product.name}' (SKU: {product.sku}) is expiring soon on {product.expiry_date}! ({days_left} days left)"
                     new_notif = models.Notification(
-                        message=f"Product '{product.name}' (SKU: {product.sku}) is expiring soon on {product.expiry_date}! ({days_left} days left)",
+                        message=msg,
                         type="expiring_soon",
                         product_id=product.id
                     )
                     db.add(new_notif)
+                    send_notification_async("expiring_soon", msg, product.name)
                     
     db.commit()
 

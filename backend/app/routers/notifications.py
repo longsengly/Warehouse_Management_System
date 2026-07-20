@@ -5,8 +5,17 @@ from typing import List, Optional
 from ..database import get_db
 from .. import models, schemas, auth
 from .inventory import check_and_trigger_all_notifications
+from ..telegram_service import test_telegram_connection
 
 router = APIRouter(prefix="/notifications", tags=["Notifications"])
+
+@router.get("/telegram-test")
+async def test_telegram(
+    current_user: models.User = Depends(auth.require_admin)
+):
+    """Test the Telegram bot connection (admin only). Sends a test message to the configured chat."""
+    result = await test_telegram_connection()
+    return result
 
 @router.get("", response_model=List[schemas.NotificationOut])
 def get_notifications(
